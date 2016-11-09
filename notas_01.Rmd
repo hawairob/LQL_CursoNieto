@@ -1,0 +1,99 @@
+---
+title: "Clase 01"
+output:
+  html_notebook: default
+  html_document: default
+---
+```{r librerias, echo = FALSE}
+source("lib/helpers.R")
+```
+
+
+**Ejercicio 1. NotasL15L2.pdf pag 37.**
+
+*Sea $\theta$ la tasa de créditos hipotecarios otorgados por un banco. Durante el 2004 la tasa promedio fue de 60% y la desviación estándar de la tasa fue de 0.04. En lo que va del año 2005 se han solicitado 100 créditos, de los cuales se han otorgado únicamente 50.*
+
+*a) Usando la información del año pasado encuentra la distribución beta que mejor describe el conocimiento inicial.*
+
+Con la información del problema sabemos que $E(X) = 0.6$ y $\sqrt{Var(X)} = 0.04$. Sea X una distribución $Beta(\alpha, \beta)$, $E(X) = \frac{\alpha}{\alpha + \beta}$ y $Var(X) =  \frac{\alpha\beta}{(\alpha + \beta)^2 (\alpha + \beta + 1)}$. 
+
+Entonces... si contara con el tiempo y la paciencia necesaria para hacer esto, despejaría para $\alpha$ y $\beta$ y llegaría al resultado que $\alpha = 89.4$ y $\beta = 59.6$. La cual se ve así.
+
+```{r grafica beta, echo = FALSE}
+x <- seq(0, 1, by = .001)
+y <- dbeta(x, 89.4, 59.6)
+data.frame(x, y) %>%
+  ggplot(aes(x, y)) +
+  geom_line() +
+  ggtitle("Distribución Beta(89.4, 59.6)") +
+  ylab("f(x)")
+```
+
+*b) Usando la información del año pasado, encuentra la distribución normal transformada que mejor describa el conocimiento inicial.*
+
+De manera similar al inciso *a*, Sea $X \sim LogN(\mu, \sigma^2)$ entonces $E(X) = e^{(\mu + \frac{\sigma^2}{2})}$ y $Var(X) = (e^{\sigma^2} - 1)e^{2\mu + \sigma^2}$. ... Si contara con la energía vital suficiente para realizar esto como se debe hacer llegaría a que los parámetros son: $\mu = .4054$ y $\sigma^2 = 33.33$, la cual se ve así:
+
+```{r, echo = FALSE}
+x <- seq(0, 1, by = .01)
+y <- dlnorm(x, 0.4054, 33.33)
+data.frame(x, y) %>%
+  ggplot(aes(x, y)) +
+  geom_line() +
+  ggtitle("Distribución LogNormal(0.4054, 33.33)") +
+  ylab("f(x)")
+```
+
+*c) Determina la distribución inicial de referencia.*
+
+No sé qué onda aquí... será una $N(\mu, \sigma^2)$? en cuyo caso $E(X) = 0.6$ y $Var(X) = 0.0016$ y se ve como:
+
+```{r, echo = FALSE}
+x <- seq(0, 1, by = .001)
+y <- dnorm(x, 0.6, 0.0016)
+data.frame(x, y) %>%
+  ggplot(aes(x, y)) +
+  geom_line() +
+  ggtitle("Distribución Normal(0.6, 0.0016)") +
+  ylab("f(x)")
+```
+
+*d) Usando los datos del año 2005 encuentra la distribución final para cada una de las distribuciones iniciales de los incisos a - c.*
+
+Utilizamos JAGS en R para implementar esta solución. La solución para cada inciso es distinta dependiendo de la distribución apriori que asignemos.
+
+Para el inciso *a*: $Beta(89.4, 59.6)$:
+
+```{r}
+# Generamos los datos de la muestra y los guardamos en una lista
+n <- 100
+credito <- c(rep(1, 50), rep(0, 50))
+data <- list("n" = n, "x" = credito)
+inits <- function(){list(theta = 0.5, x1 = rep(1, 2))}
+
+# Seleccionamos los parámetros que queremos monitorear
+parameters <- c("theta","x1")
+
+ej1.sim <- jags(data, inits, parameters, model.file = "Ej1_a.txt",
+                n.iter = 5000, n.chains = 1, n.burnin = 500,
+                working.directory = "src/")
+
+# Monitoreo
+out <- ej1.sim$BUGSoutput$sims.list
+z <- out$theta
+plot(z, type = "l")
+plot(cumsum(z)/(1:length(z)), type = "l")
+hist(z, freq=FALSE)
+acf(z)
+```
+
+```{r}
+out.sum <- ej1.sim$BUGSoutput$summary
+print(out.sum)
+```
+
+
+```{r}
+out.dic <- ej1.sim$BUGSoutput$DIC
+out.dic
+```
+

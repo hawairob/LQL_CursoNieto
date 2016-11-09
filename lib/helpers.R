@@ -1,4 +1,6 @@
-helper.function <- function()
-{
-  return(1)
-}
+# Librerias
+
+library(dplyr)
+library(tidyr)
+library(R2jags)
+library(ggplot2)
