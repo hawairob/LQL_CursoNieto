@@ -1,0 +1,14 @@
+model
+{
+#Likelihood
+for (i in 1:n) {
+	x[i] ~ dbin(theta,1)
+	}
+#Priors 
+theta <- exp(lambda)/(1+exp(lambda))
+lambda ~ dnorm(0.4054,33.33)
+#Predictive
+for (j in 1:2) {
+	x1[j] ~ dbin(theta,1)
+	}
+}

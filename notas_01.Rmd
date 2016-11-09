@@ -45,15 +45,15 @@ data.frame(x, y) %>%
 
 *c) Determina la distribución inicial de referencia.*
 
-No sé qué onda aquí... será una $N(\mu, \sigma^2)$? en cuyo caso $E(X) = 0.6$ y $Var(X) = 0.0016$ y se ve como:
+No sé qué onda aquí... pero se utiliza una $Beta(.5, .5)$ que se ve...
 
 ```{r, echo = FALSE}
 x <- seq(0, 1, by = .001)
-y <- dnorm(x, 0.6, 0.0016)
+y <- dbeta(x, 0.5, 0.5)
 data.frame(x, y) %>%
   ggplot(aes(x, y)) +
   geom_line() +
-  ggtitle("Distribución Normal(0.6, 0.0016)") +
+  ggtitle("Distribución Beta(0.5, 0.5)") +
   ylab("f(x)")
 ```
 
@@ -61,7 +61,7 @@ data.frame(x, y) %>%
 
 Utilizamos JAGS en R para implementar esta solución. La solución para cada inciso es distinta dependiendo de la distribución apriori que asignemos.
 
-Para el inciso *a*: $Beta(89.4, 59.6)$:
+Para el inciso *a*: $Beta(89.4, 59.6)$. Para ver la implementación en JAGS ver archivo *Ej1_a.txt*.
 
 ```{r}
 # Generamos los datos de la muestra y los guardamos en una lista
@@ -73,27 +73,80 @@ inits <- function(){list(theta = 0.5, x1 = rep(1, 2))}
 # Seleccionamos los parámetros que queremos monitorear
 parameters <- c("theta","x1")
 
+set.seed(1010)
 ej1.sim <- jags(data, inits, parameters, model.file = "Ej1_a.txt",
                 n.iter = 5000, n.chains = 1, n.burnin = 500,
                 working.directory = "src/")
 
 # Monitoreo
 out <- ej1.sim$BUGSoutput$sims.list
-z <- out$theta
-plot(z, type = "l")
-plot(cumsum(z)/(1:length(z)), type = "l")
-hist(z, freq=FALSE)
-acf(z)
+class(out)
+out$theta %>% head
+
+ej1.theta <- out$theta %>%
+  data.frame %>%
+  setNames("theta") %>%
+  mutate(index = 1:length(theta))
+
+ej1.theta %>%
+  ggplot(aes(index, theta)) +
+  geom_line() +
+  ggtitle("Valor del parámetro en cada paso de la cadena")
+
+ej1.theta %>%
+  mutate(acumulada = cumsum(theta)/(1:length(theta))) %>%
+  ggplot(aes(index, acumulada)) +
+  geom_line() +
+  ggtitle("Convergencia de la cadena")
+
+ej1.theta %>%
+  ggplot(aes(theta)) +
+  geom_histogram() +
+  ggtitle("Histograma de theta")
+
+data.frame(acf = acf.theta$acf,
+           lag = acf.theta$lag) %>%
+  ggplot(aes(lag, acf)) +
+  geom_point() +
+  geom_segment(aes(xend = lag, yend = 0)) +
+  ggtitle("Autocorrelacion de theta")
+
 ```
+
+Obtenemos también estadísticos básicos de los parámetros de interés.
 
 ```{r}
 out.sum <- ej1.sim$BUGSoutput$summary
 print(out.sum)
 ```
 
+Como medida de ajuste observamos el DIC.
 
 ```{r}
 out.dic <- ej1.sim$BUGSoutput$DIC
 out.dic
+```
+
+Para los incisos restantes solamente es necesario modificar el archivo en JAGS. Omitiré el código y la validación del modelo because life, pero ahí están en el *src*.
+
+
+```{r, echo = FALSE}
+# Inciso b
+# inits <- function(){list(lambda = 0)}
+# ej2.sim <- jags(data, inits, parameters, model.file = "Ej1_b.txt",
+#                 n.iter = 5000, n.chains = 1, n.burnin = 500,
+#                 working.directory = "src/")
+
+# Inciso c
+# inits <- function(){list(theta = 0.5, x1 = rep(1, 2))}
+# ej3.sim <- jags(data, inits, parameters, model.file = "Ej1_c.txt",
+#                 n.iter = 5000, n.chains = 1, n.burnin = 500,
+#                 working.directory = "src/")
+# 
+# Inciso d
+# inits <- function(){list(theta = 0.5, eta = 1)}
+# ej4.sim <- jags(data, inits, parameters, model.file = "Ej1_d.txt",
+#                 n.iter = 5000, n.chains = 1, n.burnin = 500,
+#                 working.directory = "src/")
 ```
 
